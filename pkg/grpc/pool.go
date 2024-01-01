@@ -9,8 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/arpit006/go-grpc-conn-pool/pkg/errors"
-
 	"github.com/go-co-op/gocron/v2"
 	"google.golang.org/grpc"
 )
@@ -23,7 +21,7 @@ type ClientConnPool struct {
 	connsMu     sync.Mutex
 	refreshMu   sync.Mutex
 	lastDialErr atomic.Value
-	_closed     uint32
+	_closed     atomic.Uint32
 }
 
 func (pool *ClientConnPool) Invoke(ctx context.Context, method string, args any, reply any, opts ...grpc.CallOption) error {
@@ -37,6 +35,25 @@ func (pool *ClientConnPool) Invoke(ctx context.Context, method string, args any,
 func (pool *ClientConnPool) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 	// TODO: fill the implementation of new stream over grpc connection pool
 	panic("not implemented yet")
+}
+
+func NewConnPool(target string) (*ClientConnPool, error) {
+	p := &ClientConnPool{
+		target: target,
+		// TODO: add grpc dial option support
+		currIndex: &RoundRobinSelector{mu: sync.Mutex{}},
+	}
+
+	// initialize the client connection pool
+	p.init()
+
+	// refresh connection in background
+	err := p.asyncRefresh()
+	if err != nil {
+		return nil, fmt.Errorf("[%s]. errors is: [%s]", asyncRefreshInitErr, err)
+	}
+
+	return p, nil
 }
 
 func (pool *ClientConnPool) init() {
@@ -60,8 +77,8 @@ func (pool *ClientConnPool) init() {
 
 func (pool *ClientConnPool) storeLastDialErr(err error) {
 	pool.lastDialErr.Store(
-		errors.ErrMap{
-			Message:    err.Error(),
+		ErrMap{
+			Err:        err,
 			OccurredAt: time.Now(),
 		})
 }
@@ -70,7 +87,7 @@ func (pool *ClientConnPool) dialConn() (*clientConn, error) {
 	conn, err := pool.opts.dialer(context.Background(), pool.target, pool.opts.dialOptions...)
 	if err != nil {
 		pool.storeLastDialErr(err)
-		return nil, errors.GrpcDialErr
+		return nil, grpcDialErr
 	}
 
 	c := wrapToClientConn(conn)
@@ -115,7 +132,7 @@ func (pool *ClientConnPool) asyncRefresh() error {
 	)
 
 	if err != nil {
-		return fmt.Errorf("[%s]. error is: [%s]", errors.CronErr, err)
+		return fmt.Errorf("[%s]. error is: [%s]", cronErr, err)
 	}
 	s.Start()
 
@@ -132,7 +149,7 @@ func (pool *ClientConnPool) refreshConnection(c *clientConn) error {
 	newConn, err := pool.opts.dialer(context.Background(), pool.target, pool.opts.dialOptions...)
 	if err != nil {
 		pool.storeLastDialErr(err)
-		return fmt.Errorf("[%s], error is: [%s]", errors.GrpcDialErr, err)
+		return fmt.Errorf("[%s], error is: [%s]", grpcDialErr, err)
 	}
 	pool.connsMu.Lock()
 
@@ -192,7 +209,7 @@ func (pool *ClientConnPool) get() (*clientConn, error) {
 		// since no healthy connection found. Dial in sync to create a healthy connection to serve this RPC
 		err := pool.refreshConnection(conn)
 		if err != nil {
-			return nil, fmt.Errorf("[%s], error is: [%s]", errors.ConnRefreshErr, err)
+			return nil, fmt.Errorf("[%s], error is: [%s]", connRefreshErr, err)
 		}
 	}
 	// if current connection is healthy, return this connection
@@ -224,20 +241,42 @@ func (pool *ClientConnPool) getNextHealthyConn(curr, max int) (*clientConn, erro
 			return pool.conns[ptr], nil
 		}
 	}
-	return nil, errors.NoHealthyConnAvailableErr
+	return nil, noHealthyConnAvailableErr
 }
 
-func NewConnPool(target string) (*ClientConnPool, error) {
-	p := &ClientConnPool{
-		target: target,
+// Close will close all the active connections in the ClientConnPool
+func (pool *ClientConnPool) Close() error {
+	if !pool._closed.CompareAndSwap(0, 1) {
+		return connPoolCloseErr
 	}
 
-	// initialize the client connection pool
-	p.init()
+	pool.connsMu.Lock()
+	defer pool.connsMu.Unlock()
 
-	// refresh connection in background
-	err := p.asyncRefresh()
-	if err != nil {
-		return nil, fmt.Errorf("[%s]. errors is: [%s]", errors.AsyncRefreshInitErr, err)
+	wg := &sync.WaitGroup{}
+
+	// close all the connections in the background
+	for _, c := range pool.conns {
+		wg.Add(1)
+		go func(wg *sync.WaitGroup, c *clientConn) {
+			defer wg.Done()
+
+			_ = c.conn.Close()
+		}(wg, c)
 	}
+
+	wg.Wait()
+
+	pool.conns = nil
+
+	return nil
+}
+
+func (pool *ClientConnPool) closed() bool {
+	return pool._closed.Load() == 1
+}
+
+func (pool *ClientConnPool) DialErr() error {
+	em := pool.lastDialErr.Load().(ErrMap)
+	return em.Err
 }

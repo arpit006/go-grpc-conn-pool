@@ -1,8 +1,8 @@
-package errors
+package grpc
 
 import "time"
 
 type ErrMap struct {
-	Message    string
+	Err        error
 	OccurredAt time.Time
 }
