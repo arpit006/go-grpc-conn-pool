@@ -5,12 +5,11 @@ import (
 )
 
 var (
-	grpcDialErr         = errors.New("go-grpc:errors while grpc dial to the server")
-	asyncRefreshInitErr = errors.New("go-grpc:errors while initializing background connection refresh job")
+	grpcDialErr         = errors.New("go-grpc:error while grpc dial to the server")
+	asyncRefreshInitErr = errors.New("go-grpc:error while initializing background connection refresh job")
 	connRefreshErr      = errors.New("go-grpc:error while refreshing connection")
 	cronErr             = errors.New("go-grpc:error in initializing cron job")
-	ClientInitErr       = errors.New("go-grpc:errors while initializing client")
-	PoolInitErr         = errors.New("go-grpc:errors while initializing client pool")
+	clientInitErr       = errors.New("go-grpc:error while initializing client")
 )
 
 var (

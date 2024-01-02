@@ -1,6 +1,8 @@
 package grpc
 
-import "google.golang.org/grpc/connectivity"
+import (
+	"google.golang.org/grpc/connectivity"
+)
 
 type StateMap map[connectivity.State]bool
 

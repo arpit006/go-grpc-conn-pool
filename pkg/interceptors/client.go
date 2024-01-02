@@ -1,9 +1,10 @@
-package middleware
+package interceptors
 
 import (
 	"context"
-	"google.golang.org/grpc"
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 func ClientTimeoutInterceptor(timeout time.Duration) grpc.UnaryClientInterceptor {
