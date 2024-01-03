@@ -72,9 +72,9 @@ func wrapToOptions(opts []Option) *options {
 func getPoolOptions(cfg *ClientConfig, opts []grpc.DialOption) []Option {
 	return []Option{
 		WithDialOptions(getGRPCDialOptions(cfg, opts)...),
-		PoolSize(cfg.ConnectionPoolSize),
-		ConnectionMaxLifeTime(cfg.ConnectionMaxLifeTime),
-		ConnectionStandardDeviation(cfg.ConnectionLifeTimeDeviation),
+		PoolSize(cfg.connectionPoolSize),
+		ConnectionMaxLifeTime(cfg.connectionMaxLifeTime),
+		ConnectionStandardDeviation(cfg.connectionLifeTimeDeviation),
 		// TODO: add dialer override support in ClientConfig
 	}
 }

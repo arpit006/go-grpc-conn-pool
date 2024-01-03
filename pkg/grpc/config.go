@@ -3,13 +3,13 @@ package grpc
 import "time"
 
 type ClientConfig struct {
-	Name                        string
-	Target                      string
-	ClientID                    string
-	RequestTimeout              time.Duration
-	ConnectionPoolSize          int
-	ConnectionMaxLifeTime       time.Duration
-	ConnectionLifeTimeDeviation time.Duration
+	name                        string
+	target                      string
+	clientID                    string
+	requestTimeout              time.Duration
+	connectionPoolSize          int
+	connectionMaxLifeTime       time.Duration
+	connectionLifeTimeDeviation time.Duration
 }
 
 type clientConfigBuilder struct {
@@ -64,14 +64,26 @@ func (b *clientConfigBuilder) WithStdDeviation(d time.Duration) *clientConfigBui
 
 func (b *clientConfigBuilder) Build() *ClientConfig {
 	return &ClientConfig{
-		Name:                        WrapWithDefault[string](b.name, "grpc-v2-client"),
-		Target:                      WrapWithDefault[string](b.target, "0.0.0.0:80"),
-		ClientID:                    WrapWithDefault[string](b.clientID, "grpc-v2-client"),
-		RequestTimeout:              WrapWithDefault[time.Duration](b.requestTimeout, 5*time.Minute),
-		ConnectionPoolSize:          WrapWithDefault[int](b.poolSize, defaultConnectionPoolSize),
-		ConnectionMaxLifeTime:       WrapWithDefault[time.Duration](b.connMaxLifetime, defaultConnMaxTimeout),
-		ConnectionLifeTimeDeviation: WrapWithDefault[time.Duration](b.stdDev, defaultConnStdDeviation),
+		name:                        GetOrDefault[string](b.name, "grpc-v2-client"),
+		target:                      GetOrDefault[string](b.target, "0.0.0.0:80"),
+		clientID:                    GetOrDefault[string](b.clientID, "grpc-v2-client"),
+		requestTimeout:              GetOrDefault[time.Duration](b.requestTimeout, 5*time.Minute),
+		connectionPoolSize:          GetOrDefault[int](b.poolSize, defaultConnectionPoolSize),
+		connectionMaxLifeTime:       GetOrDefault[time.Duration](b.connMaxLifetime, defaultConnMaxTimeout),
+		connectionLifeTimeDeviation: GetOrDefault[time.Duration](b.stdDev, defaultConnStdDeviation),
 	}
 }
 
-// TODO: add getters over ClientConfig
+func (c *ClientConfig) Name() string { return c.name }
+
+func (c *ClientConfig) Target() string { return c.target }
+
+func (c *ClientConfig) ClientID() string { return c.clientID }
+
+func (c *ClientConfig) RequestTimeout() time.Duration { return c.requestTimeout }
+
+func (c *ClientConfig) PoolSize() int { return c.connectionPoolSize }
+
+func (c *ClientConfig) ConnMaxLifetime() time.Duration { return c.connectionMaxLifeTime }
+
+func (c *ClientConfig) ConnLifetimeDeviation() time.Duration { return c.connectionLifeTimeDeviation }

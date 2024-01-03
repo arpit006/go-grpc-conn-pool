@@ -16,15 +16,15 @@ type client struct {
 }
 
 func NewClient(cfg *ClientConfig, opts ...grpc.DialOption) (Client, error) {
-	if cfg.ConnectionPoolSize <= 0 {
-		cfg.ConnectionPoolSize = defaultConnectionPoolSize
+	if cfg.connectionPoolSize <= 0 {
+		cfg.connectionPoolSize = defaultConnectionPoolSize
 	}
 
-	if cfg.ConnectionMaxLifeTime == 0 {
-		cfg.ConnectionMaxLifeTime = maxDuration
+	if cfg.connectionMaxLifeTime == 0 {
+		cfg.connectionMaxLifeTime = maxDuration
 	}
 
-	pool, err := newConnPool(cfg.Target, getPoolOptions(cfg, opts)...)
+	pool, err := newConnPool(cfg.target, getPoolOptions(cfg, opts)...)
 	if err != nil {
 		panic(clientInitErr)
 	}

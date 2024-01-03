@@ -1,14 +1,12 @@
 package grpc
 
 import (
-	"github.com/arpit006/go-grpc-conn-pool/pkg/interceptors"
-
 	"google.golang.org/grpc"
 )
 
 func getGRPCDialOptions(cfg *ClientConfig, opts []grpc.DialOption) []grpc.DialOption {
 	irs := []grpc.UnaryClientInterceptor{
-		interceptors.ClientTimeoutInterceptor(cfg.RequestTimeout),
+		ClientTimeoutInterceptor(cfg.requestTimeout),
 	}
 	// Add any other interceptor on the way
 

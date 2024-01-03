@@ -22,7 +22,7 @@ func IsZero[V string | int | time.Duration](v V) bool {
 	panic("cannot evaluate zero value of undefined type")
 }
 
-func WrapWithDefault[V string | int | time.Duration](v V, defaultVal V) V {
+func GetOrDefault[V string | int | time.Duration](v V, defaultVal V) V {
 	if IsZero[V](v) {
 		return defaultVal
 	}
