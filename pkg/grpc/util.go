@@ -18,6 +18,9 @@ func IsZero[V string | int | time.Duration](v V) bool {
 		if value.Type() == reflect.TypeOf(time.Duration(0)) {
 			return value.Interface().(time.Duration) == 0
 		}
+	default:
+		zeroValue := reflect.Zero(value.Type())
+		return reflect.DeepEqual(value.Interface(), zeroValue.Interface())
 	}
 	panic("cannot evaluate zero value of undefined type")
 }
