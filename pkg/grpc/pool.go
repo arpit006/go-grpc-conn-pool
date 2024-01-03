@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-co-op/gocron/v2"
+	"github.com/go-co-op/gocron"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 )
@@ -119,25 +119,15 @@ func (pool *clientConnPool) shouldRefresh(c *clientConn) bool {
 }
 
 func (pool *clientConnPool) asyncRefresh() error {
-	s, err := gocron.NewScheduler()
-	if err != nil {
-		return err
-	}
-
+	s := gocron.NewScheduler(time.UTC)
 	task := func(job gocron.Job) {
 		pool.refreshInBackground()
 	}
-	_, err = s.NewJob(
-		gocron.DurationJob(30*time.Second),
-		gocron.NewTask(task),
-	)
-
+	_, err := s.Every(30).Seconds().DoWithJobDetails(task)
 	if err != nil {
-		return fmt.Errorf("[%s]. error is: [%s]", cronErr, err)
+		return fmt.Errorf("[%s], error is: [%s]", cronErr, err)
 	}
-	s.Start()
-
-	// TODO: close down this background job
+	s.StartAsync()
 	return nil
 }
 
