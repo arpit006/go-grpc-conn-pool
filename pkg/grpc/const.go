@@ -1,6 +1,8 @@
 package grpc
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	defaultConnectionPoolSize = 1

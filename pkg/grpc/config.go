@@ -1,6 +1,8 @@
 package grpc
 
-import "time"
+import (
+	"time"
+)
 
 type ClientConfig struct {
 	name                        string

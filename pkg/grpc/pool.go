@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"google.golang.org/grpc/connectivity"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/go-co-op/gocron/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 )
 
 type clientConnPool struct {
