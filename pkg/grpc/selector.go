@@ -1,6 +1,8 @@
 package grpc
 
-import "sync"
+import (
+	"sync"
+)
 
 type Selector interface {
 	Select(max int) int
