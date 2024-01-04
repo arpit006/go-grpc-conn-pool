@@ -39,8 +39,7 @@ func (pool *clientConnPool) NewStream(ctx context.Context, desc *grpc.StreamDesc
 
 func newConnPool(target string, opts ...Option) (*clientConnPool, error) {
 	p := &clientConnPool{
-		target: target,
-		// TODO: add grpc dial option support
+		target:    target,
 		opts:      wrapToOptions(opts),
 		currIndex: &RoundRobinSelector{mu: sync.Mutex{}},
 	}
