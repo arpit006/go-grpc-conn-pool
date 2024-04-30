@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -10,7 +11,8 @@ import (
 type clientConn struct {
 	conn      *grpc.ClientConn
 	createdAt time.Time
-	dl        atomic.Int64 // this will be atomic value
+	dl        int64 // this will be atomic value
+	cMu       sync.Mutex
 }
 
 func wrapToClientConn(cc *grpc.ClientConn) *clientConn {
@@ -21,6 +23,6 @@ func (c *clientConn) close() error {
 	return c.conn.Close()
 }
 
-func (c *clientConn) setDeadline(d time.Duration) { c.dl.Store(int64(d)) }
+func (c *clientConn) setDeadline(d time.Duration) { atomic.StoreInt64(&c.dl, int64(d)) }
 
-func (c *clientConn) deadline() time.Duration { return time.Duration(c.dl.Load()) }
+func (c *clientConn) deadline() time.Duration { return time.Duration(atomic.LoadInt64(&c.dl)) }

@@ -1,9 +1,9 @@
 module grpc-test/client
 
-go 1.21
+go 1.20
 
 require (
-	github.com/arpit006/go-grpc-conn-pool v0.0.0-20240103204005-f734af7534cd
+	github.com/arpit006/go-grpc-conn-pool v0.0.1
 	//go-grpc/pool v0.0.0-20240103200111-119de504430b
 	google.golang.org/grpc v1.60.1
 	grpc-test/protos v0.0.0-00010101000000-000000000000
@@ -25,3 +25,4 @@ require (
 
 replace grpc-test/protos => ./../protos
 
+replace github.com/arpit006/go-grpc-conn-pool => ./../../../

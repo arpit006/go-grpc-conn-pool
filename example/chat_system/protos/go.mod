@@ -1,6 +1,6 @@
 module grpc-test/protos
 
-go 1.21
+go 1.20
 
 require (
 	github.com/golang/protobuf v1.5.3 // indirect

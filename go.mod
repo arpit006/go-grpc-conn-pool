@@ -1,6 +1,6 @@
 module github.com/arpit006/go-grpc-conn-pool
 
-go 1.21
+go 1.20
 
 require (
 	github.com/go-co-op/gocron v1.37.0
