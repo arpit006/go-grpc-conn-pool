@@ -1,6 +1,6 @@
 module grpc-test/server
 
-go 1.21
+go 1.20
 
 require (
 	golang.org/x/net v0.19.0

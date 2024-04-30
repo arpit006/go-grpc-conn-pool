@@ -21,7 +21,7 @@ type clientConnPool struct {
 	connsMu     sync.Mutex
 	refreshMu   sync.Mutex
 	lastDialErr atomic.Value
-	_closed     atomic.Uint32
+	_closed     uint32
 }
 
 func (pool *clientConnPool) Invoke(ctx context.Context, method string, args any, reply any, opts ...grpc.CallOption) error {
@@ -62,12 +62,12 @@ func (pool *clientConnPool) init() {
 	for i := 0; i < pool.opts.poolSize; i++ {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			defer wg.Done()
 			if c, e := pool.dialConn(); e == nil {
 				pool.connsMu.Lock()
-				defer pool.connsMu.Unlock()
 				pool.conns = append(pool.conns, c)
+				pool.connsMu.Unlock()
 			}
+			wg.Done()
 		}(wg)
 	}
 
@@ -104,13 +104,17 @@ func (pool *clientConnPool) connLifeTimeout() time.Duration {
 
 func (pool *clientConnPool) shouldRefresh(c *clientConn) bool {
 	now := time.Now()
+	c.cMu.Lock()
+	defer func() {
+		c.cMu.Unlock()
+	}()
 
 	// check if deadline has been exceeded
 	if now.Sub(c.createdAt) >= c.deadline() {
 		return true
 	}
 
-	// check if connection is not in an unexpected healhty state
+	// check if connection is not in an unexpected healthy state
 	if state := c.conn.GetState(); isRefreshState(state) {
 		return true
 	}
@@ -148,9 +152,11 @@ func (pool *clientConnPool) refreshConnection(c *clientConn) error {
 		_ = cc.Close()
 	}(c.conn)
 
+	c.cMu.Lock()
 	c.conn = newConn
 	c.createdAt = time.Now()
 	c.setDeadline(pool.connLifeTimeout())
+	c.cMu.Unlock()
 
 	pool.connsMu.Unlock()
 	return nil
@@ -163,7 +169,6 @@ func (pool *clientConnPool) refreshInBackground() {
 
 	// acquire lock
 	pool.refreshMu.Lock()
-	defer pool.refreshMu.Unlock()
 
 	// get all unhealthy connections
 	unhealthyConns := make([]*clientConn, 0)
@@ -178,13 +183,15 @@ func (pool *clientConnPool) refreshInBackground() {
 	// refresh all the connections in background
 	for _, c := range unhealthyConns {
 		wg.Add(1)
-		go func(wg *sync.WaitGroup, c *clientConn) {
-			defer wg.Done()
+		go func(c *clientConn) {
 			_ = pool.refreshConnection(c)
-		}(wg, c)
+			wg.Done()
+		}(c)
 	}
 	// release the lock
 	wg.Wait()
+
+	pool.refreshMu.Unlock()
 }
 
 func (pool *clientConnPool) get() (*clientConn, error) {
@@ -208,7 +215,10 @@ func (pool *clientConnPool) get() (*clientConn, error) {
 
 func (pool *clientConnPool) isHealthyConn(c *clientConn) bool {
 	now := time.Now()
-
+	c.cMu.Lock()
+	defer func() {
+		c.cMu.Unlock()
+	}()
 	if now.Sub(c.createdAt) >= c.deadline() {
 		return false
 	}
@@ -236,34 +246,34 @@ func (pool *clientConnPool) getNextHealthyConn(curr, max int) (*clientConn, erro
 
 // Close will close all the active connections in the clientConnPool
 func (pool *clientConnPool) Close() error {
-	if !pool._closed.CompareAndSwap(0, 1) {
+	if !atomic.CompareAndSwapUint32(&pool._closed, 0, 1) {
 		return connPoolCloseErr
 	}
 
 	pool.connsMu.Lock()
-	defer pool.connsMu.Unlock()
 
 	wg := &sync.WaitGroup{}
 
 	// close all the connections in the background
 	for _, c := range pool.conns {
 		wg.Add(1)
-		go func(wg *sync.WaitGroup, c *clientConn) {
-			defer wg.Done()
-
+		go func(c *clientConn) {
 			_ = c.conn.Close()
-		}(wg, c)
+			wg.Done()
+		}(c)
 	}
 
 	wg.Wait()
 
 	pool.conns = nil
 
+	pool.connsMu.Unlock()
+
 	return nil
 }
 
 func (pool *clientConnPool) closed() bool {
-	return pool._closed.Load() == 1
+	return atomic.LoadUint32(&pool._closed) == 1
 }
 
 func (pool *clientConnPool) DialErr() error {
